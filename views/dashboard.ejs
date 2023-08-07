@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard</title>
+</head>
+<body>
+  <div class="navbar">
+    <% if (user) { %>
+      <div class="user-info">
+        <h2>Bem-vindo, <%= user.displayName %></h2>
+        <img src="<%= user.photos[0].value %>" alt="Foto do usuário">
+      </div>
+      <a href="/logout" class="logout-button">Logout</a>
+    <% } else { %>
+      <h2>Você não está autenticado.</h2>
+    <% } %>
+  </div>
+
+  <div class="content">
+    <div class="input-container">
+      <label for="salary-input">Salário Total:</label>
+      <input type="range" id="salary-input" min="0" max="40000" step="100" value="0">
+      <span id="salary-value">R$ 0</span>
+      <input type="number" id="salary-manual-input" min="0" max="40000" step="100" placeholder="Informe o salário total">
+    </div>
+    
+    <div class="result-container">
+      <div class="result-item" data-type="investment">
+        <h3>Investimento (<span id="investment-percentage">20</span>%)</h3>
+        <span class="result-value" id="investment-result">R$ 0.00</span>
+        <input type="number" id="investment-input" min="0" max="100" step="1" value="20" placeholder="Informe a porcentagem">
+      </div>
+      <div class="result-item" data-type="lazer">
+        <h3>Lazer (<span id="lazer-percentage">50</span>%)</h3>
+        <span class="result-value" id="lazer-result">R$ 0.00</span>
+        <input type="number" id="lazer-input" min="0" max="100" step="1" value="50" placeholder="Informe a porcentagem">
+      </div>
+      <div class="result-item" data-type="cartao">
+        <h3>Cartão (<span id="cartao-percentage">30</span>%)</h3>
+        <span class="result-value" id="cartao-result">R$ 0.00</span>
+        <input type="number" id="cartao-input" min="0" max="100" step="1" value="30" placeholder="Informe a porcentagem">
+      </div>
+      <div class="investment-return-section">
+        <h3>Retorno do Investimento Celic 13,75%:</h3>
+        <span id="investment-return" class="investment-return-value">R$ 0.00</span>
+        <span id="investment-return-per-year" class="investment-return-per-year">R$ 0.00 (por ano)</span>
+        <span id="investment-return-per-month" class="investment-return-per-month">R$ 0.00 (por mês)</span>
+      </div>
+    </div>
+    
+    <div class="expenses-container">
+      <h2>Gastos</h2>
+      <div class="expense-input">
+        <label for="expense-select">Gastos:</label>
+        <select id="expense-select">
+          <option value="investment">Investimento</option>
+          <option value="lazer">Lazer</option>
+          <option value="cartao">Cartão</option>
+        </select>
+      </div>
+      <div class="expense-input">
+        <label for="expense-label">Etiqueta:</label>
+        <input type="text" id="expense-label" placeholder="Informe a etiqueta do gasto">
+      </div>
+      <div class="expense-input">
+        <label for="expense-value">Valor do Gasto:</label>
+        <input type="number" id="expense-value" min="0" step="0.01" placeholder="Informe o valor do gasto">
+      </div>
+
+      <button id="add-expense-button">Adicionar Gasto</button>
+      <div class="expenses-list" id="expenses-list"></div>
+      <h3 class="expenses-total">Gasto Total: <span id="total-expenses">R$ 0.00</span></h3>
+      <h3 class="remaining-salary">Salário Restante: <span id="remaining-salary">R$ 0.00</span></h3>
+    </div>
+  </div>
+
+  <script>
+    const salaryInput = document.getElementById('salary-input');
+    const salaryValue = document.getElementById('salary-value');
+    const salaryManualInput = document.getElementById('salary-manual-input');
+    const investmentResult = document.getElementById('investment-result');
+    const lazerResult = document.getElementById('lazer-result');
+    const cartaoResult = document.getElementById('cartao-result');
+    const investmentPercentage = document.getElementById('investment-percentage');
+    const lazerPercentage = document.getElementById('lazer-percentage');
+    const cartaoPercentage = document.getElementById('cartao-percentage');
+    const investmentInput = document.getElementById('investment-input');
+    const lazerInput = document.getElementById('lazer-input');
+    const cartaoInput = document.getElementById('cartao-input');
+    const expenseSelect = document.getElementById('expense-select');
+    const expenseValueInput = document.getElementById('expense-value');
+    const expenseLabelInput = document.getElementById('expense-label');
+    const addExpenseButton = document.getElementById('add-expense-button');
+    const expensesList = document.getElementById('expenses-list');
+    const totalExpenses = document.getElementById('total-expenses');
+    const remainingSalary = document.getElementById('remaining-salary');
+    const investmentReturnElement = document.getElementById('investment-return');
+    const investmentReturnPerYearElement = document.getElementById('investment-return-per-year');
+    const investmentReturnPerMonthElement = document.getElementById('investment-return-per-month');
+    
+    //
+    let expenses = [];
+
+    salaryInput.addEventListener('input', updateResults);
+    salaryManualInput.addEventListener('input', updateResults);
+    investmentInput.addEventListener('input', updateResults);
+    lazerInput.addEventListener('input', updateResults);
+    cartaoInput.addEventListener('input', updateResults);
+    addExpenseButton.addEventListener('click', addExpense);
+
+    function updateResults() {
+      const salary = parseFloat(salaryManualInput.value || salaryInput.value);
+      const investmentPercent = parseFloat(investmentInput.value || 20);
+      const lazerPercent = parseFloat(lazerInput.value || 50);
+      const cartaoPercent = parseFloat(cartaoInput.value || 30);
+
+      const investmentAmount = (salary * (investmentPercent / 100)).toFixed(2);
+      const lazerAmount = (salary * (lazerPercent / 100)).toFixed(2);
+      const cartaoAmount = (salary * (cartaoPercent / 100)).toFixed(2);
+
+      const celicRate = 0.1375;
+      const investmentReturn = (investmentAmount * celicRate).toFixed(2);
+      const investmentReturnPerYear = (investmentReturn * 1).toFixed(2);
+      const investmentReturnPerMonth = (investmentReturn / 12).toFixed(2);
+
+      investmentResult.textContent = `R$ ${investmentAmount}`;
+      lazerResult.textContent = `R$ ${lazerAmount}`;
+      cartaoResult.textContent = `R$ ${cartaoAmount}`;
+
+      investmentPercentage.textContent = investmentPercent;
+      lazerPercentage.textContent = lazerPercent;
+      cartaoPercentage.textContent = cartaoPercent;
+
+      salaryValue.textContent = `R$ ${salary}`;
+
+      updateExpenses();
+
+      investmentReturnElement.textContent = `R$ ${investmentReturn}`;
+      investmentReturnPerYearElement.textContent = `R$ ${investmentReturnPerYear} (por ano)`;
+      investmentReturnPerMonthElement.textContent = `R$ ${investmentReturnPerMonth} (por mês)`;
+    }
+
+    function addExpense() {
+      const selectedExpense = expenseSelect.value;
+      const value = parseFloat(expenseValueInput.value);
+      const label = expenseLabelInput.value;
+
+      if (isNaN(value) || label.trim() === '') {
+        return;
+      }
+
+      expenses.push({ name: selectedExpense, value, label });
+      expenseValueInput.value = '';
+      expenseLabelInput.value = '';
+      updateExpenses();
+
+      // Subtrair o valor do gasto nas seções de resultado correspondentes
+      const resultItem = document.querySelector(`.result-item[data-type="${selectedExpense}"]`);
+      const resultValue = resultItem.querySelector('.result-value');
+      const previousValue = parseFloat(resultValue.textContent.slice(2)); // Remove o 'R$ ' e converte para número
+      const newValue = previousValue - value;
+      resultValue.textContent = `R$ ${newValue.toFixed(2)}`;
+    }
+
+    function updateExpenses() {
+      let total = 0;
+
+      const expensesHTML = expenses.map((expense, index) => {
+        total += expense.value;
+        return `
+          <div class="expense-item">
+            <div class="expense-name">${index + 1}. ${expense.name}</div>
+            <div class="expense-label">${expense.label}</div>
+            <div class="expense-value">R$ ${expense.value.toFixed(2)}</div>
+            <button class="edit-button" onclick="editExpense(${index})">Editar</button>
+            <button class="remove-button" onclick="removeExpense(${index})">Remover</button>
+          </div>
+        `;
+      });
+
+      expensesList.innerHTML = expensesHTML.join('');
+      totalExpenses.textContent = `R$ ${total.toFixed(2)}`;
+
+      const salary = parseFloat(salaryManualInput.value || salaryInput.value);
+      const remaining = salary - total;
+      remainingSalary.textContent = `R$ ${remaining.toFixed(2)}`;
+    }
+
+    function editExpense(index) {
+      const expense = expenses[index];
+      expenseSelect.value = expense.name;
+      expenseValueInput.value = expense.value;
+      expenseLabelInput.value = expense.label;
+      removeExpense(index);
+    }
+
+    function removeExpense(index) {
+      expenses = expenses.filter((_, i) => i !== index);
+      updateExpenses();
+    }
+  </script>
+</body>
+</html>
